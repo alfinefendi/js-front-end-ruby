@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruby On Rails : First</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+    <div class="mx-auto w-full md:max-w-3xl px-5 my-5">
+        <h1>Create a Story</h1>
+        <form id="postForm" class="mt-2">
+            <input type="text" id="title" class="border  outline:none px-2 text-opacity-80 text-red-800 text-2xl"  placeholder="Title" required><br><br>
+            <textarea id="body" placeholder="Body" class="border  text-opacity-80 text-gray-800 text-lg p-2 w-full h-24 outline:none" required></textarea><br><br>
+            <div class="flex justify-end">
+                <button  class="bg-gray-100 rounded border p-1 text-xs w-20" >Create</button>
+            </div>
+        </form>
+        <br>
+        <div id="parent" class="grid md:grid-cols-2 gap-2"> 
+        </div>
+    </div>
+    <script>
+        let lastResponse = null; // To store the last response
+
+        const getData = async () => {
+            try {
+                const res = await fetch('http://192.168.1.102:3000/posts', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                const data = await res.json();
+
+                // Check if the data has changed
+                if (JSON.stringify(data) !== JSON.stringify(lastResponse)) {
+                    // If data has changed, update the DOM
+                    updateContent(data);
+                    lastResponse = data; // Update lastResponse with the new data
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        };
+
+        const updateContent = (data) => {
+            const parent = document.getElementById('parent');
+            parent.innerHTML = ''; // Clear the parent element
+
+            for (let i = 0; i < data.length; i++) {
+                const child = document.createElement('div');
+                child.innerHTML = `
+                <div class="mt-2 border-b p-2 rounded-md">
+                    <h3 class="text-red-800 text-2xl">${i + 1}. ${data[i].title}</h3>
+                    <input type="text" class="border outline:none px-2 text-opacity-80 text-gray-800 text-lg" id="body-${data[i]._id}" value="${data[i].body}"/>
+                    <p class="mt-1 text-xs text-gray-400">${data[i]._id}</p>
+                    <div class="flex gap-2 items-center">
+                        <button class="bg-gray-100 rounded border p-1 text-xs mt-2" id="update-${data[i]._id}">Update</button>
+                        <button class="bg-gray-100 rounded border p-1 text-xs mt-2" id="delete-${data[i]._id}">Delete</button>
+                    </div>
+                </div>
+                `;
+                parent.appendChild(child);
+
+                // Add event listener for the update button
+                document.getElementById(`update-${data[i]._id}`).addEventListener('click', () => {
+                    updatePost(data[i]._id);
+                });
+                document.getElementById(`delete-${data[i]._id}`).addEventListener('click', () => {
+                    deletePost(data[i]._id);
+                });
+            }
+        };
+
+        const updatePost = async (id) => {
+            const bodyValue = document.getElementById(`body-${id}`).value;
+
+            try {
+                const res = await fetch(`http://192.168.1.102:3000/posts/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        post: {
+                            body: bodyValue
+                        }
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('Post updated successfully');
+                    getData(); // Refresh data after update
+                } else {
+                    console.error('Error updating post:', data.errors);
+                    alert('Failed to update post: ' + data.errors.join(', '));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating the post.');
+            }
+        };
+
+        const deletePost = async (id) => {
+            try {
+                const res = await fetch(`http://192.168.1.102:3000/posts/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (res.ok) {
+                    alert('Post deleted successfully');
+                    getData(); // Refresh data after delete
+                } else {
+                    console.error('Error deleting post');
+                    alert('Failed to delete post');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the post.');
+            }
+        };
+
+        // Initial data fetch
+        getData();
+
+        // Poll the server every 3 seconds
+        setInterval(getData, 3000);
+    </script>
+    <script src="post.js"></script>
+</body>
+
+</html>
